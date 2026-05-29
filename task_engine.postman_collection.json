@@ -1,0 +1,174 @@
+{
+  "info": {
+    "name": "Task Engine API",
+    "description": "Moteur d'exécution de tâches universel — une seule tâche Celery (task.execute) pour tous les projets.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "base_url", "value": "http://localhost:8000", "type": "string" },
+    { "key": "task_id",  "value": "", "type": "string", "description": "Rempli automatiquement après POST /tasks/submit" }
+  ],
+  "item": [
+    {
+      "name": "Health",
+      "item": [
+        { "name": "Root",         "request": { "method": "GET", "url": "{{base_url}}/" } },
+        { "name": "Health check", "request": { "method": "GET", "url": "{{base_url}}/health" } }
+      ]
+    },
+    {
+      "name": "Projet GEO — Positions utilisateurs",
+      "description": "Soumis par l'app geo-tracker. handler_url pointe vers le service métier de l'app.",
+      "item": [
+        {
+          "name": "Position simple (stockage brut)",
+          "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.task_id) pm.collectionVariables.set('task_id',j.task_id);"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST", "url": "{{base_url}}/tasks/submit",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"task_name\": \"geo.position\",\n  \"payload\": {\n    \"utilisateur_id\": \"USR-001\",\n    \"nom\": \"Kouassi\",\n    \"prenoms\": \"Jean-Baptiste\",\n    \"longitude\": -3.9992,\n    \"latitude\": 5.3167,\n    \"timestamp\": \"2026-05-28T08:15:00\"\n  },\n  \"app_source\": \"geo-tracker-app\",\n  \"priority\": 5\n}" },
+            "description": "Sans handler_url : le payload est stocké tel quel dans la DB."
+          }
+        },
+        {
+          "name": "Position avec handler (traitement délégué)",
+          "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.task_id) pm.collectionVariables.set('task_id',j.task_id);"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST", "url": "{{base_url}}/tasks/submit",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"task_name\": \"geo.position\",\n  \"payload\": {\n    \"utilisateur_id\": \"USR-002\",\n    \"nom\": \"Traoré\",\n    \"prenoms\": \"Aminata\",\n    \"longitude\": -3.9884,\n    \"latitude\": 5.3584,\n    \"timestamp\": \"2026-05-28T09:02:33\"\n  },\n  \"handler_url\": \"http://geo-service/api/positions/process\",\n  \"app_source\": \"geo-tracker-app\",\n  \"priority\": 5\n}" },
+            "description": "Avec handler_url : le worker POSTe le payload au service métier de l'app geo."
+          }
+        },
+        {
+          "name": "Position avec handler + callback",
+          "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.task_id) pm.collectionVariables.set('task_id',j.task_id);"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST", "url": "{{base_url}}/tasks/submit",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"task_name\": \"geo.position\",\n  \"payload\": {\n    \"utilisateur_id\": \"USR-003\",\n    \"nom\": \"Koné\",\n    \"prenoms\": \"Dramane\",\n    \"longitude\": -4.0836,\n    \"latitude\": 5.3553,\n    \"timestamp\": \"2026-05-28T09:45:10\"\n  },\n  \"handler_url\": \"http://geo-service/api/positions/process\",\n  \"callback_url\": \"https://webhook.site/ton-id-unique\",\n  \"app_source\": \"geo-tracker-app\",\n  \"priority\": 5\n}" },
+            "description": "Traitement + notification progressive : le résultat est POSTé automatiquement à callback_url."
+          }
+        },
+        {
+          "name": "Position haute priorité",
+          "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.task_id) pm.collectionVariables.set('task_id',j.task_id);"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST", "url": "{{base_url}}/tasks/submit",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"task_name\": \"geo.position\",\n  \"payload\": {\n    \"utilisateur_id\": \"USR-001\",\n    \"nom\": \"Kouassi\",\n    \"prenoms\": \"Jean-Baptiste\",\n    \"longitude\": -4.0120,\n    \"latitude\": 5.3290,\n    \"timestamp\": \"2026-05-28T14:00:00\"\n  },\n  \"app_source\": \"geo-tracker-app\",\n  \"queue\": \"haute_priorite\",\n  \"priority\": 9\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Projet CRM — Contacts",
+      "description": "Soumis par l'app CRM. Même moteur, task_name différent.",
+      "item": [
+        {
+          "name": "Créer contact",
+          "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.task_id) pm.collectionVariables.set('task_id',j.task_id);"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST", "url": "{{base_url}}/tasks/submit",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"task_name\": \"crm.contact.create\",\n  \"payload\": {\n    \"nom\": \"Diallo\",\n    \"prenoms\": \"Fatoumata\",\n    \"email\": \"fatoumata.diallo@example.com\",\n    \"telephone\": \"+2250700000001\",\n    \"entreprise\": \"SODECI\"\n  },\n  \"handler_url\": \"http://crm-service/api/contacts/create\",\n  \"callback_url\": \"https://webhook.site/ton-id-unique\",\n  \"app_source\": \"crm-app\",\n  \"priority\": 5\n}" }
+          }
+        },
+        {
+          "name": "Synchroniser contact",
+          "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.task_id) pm.collectionVariables.set('task_id',j.task_id);"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST", "url": "{{base_url}}/tasks/submit",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"task_name\": \"crm.contact.sync\",\n  \"payload\": {\n    \"contact_id\": \"CRM-4521\",\n    \"source\": \"salesforce\",\n    \"champs\": [\"email\", \"telephone\", \"adresse\"]\n  },\n  \"handler_url\": \"http://crm-service/api/contacts/sync\",\n  \"app_source\": \"crm-app\",\n  \"priority\": 3\n}" }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Projet FACTURATION — Factures",
+      "description": "Soumis par l'app de facturation. Même moteur Celery.",
+      "item": [
+        {
+          "name": "Générer facture",
+          "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.task_id) pm.collectionVariables.set('task_id',j.task_id);"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST", "url": "{{base_url}}/tasks/submit",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"task_name\": \"facturation.facture.generer\",\n  \"payload\": {\n    \"client_id\": \"CLI-0042\",\n    \"commande_id\": \"CMD-2026-0187\",\n    \"montant_fcfa\": 125000,\n    \"tva_pct\": 18,\n    \"echeance\": \"2026-06-30\"\n  },\n  \"handler_url\": \"http://billing-service/api/invoices/generate\",\n  \"callback_url\": \"http://billing-service/api/invoices/on-generated\",\n  \"app_source\": \"billing-app\",\n  \"queue\": \"haute_priorite\",\n  \"priority\": 7\n}" }
+          }
+        },
+        {
+          "name": "Envoyer rappel paiement (différé 1h)",
+          "event": [{ "listen": "test", "script": { "exec": ["var j=pm.response.json(); if(j.task_id) pm.collectionVariables.set('task_id',j.task_id);"], "type": "text/javascript" }}],
+          "request": {
+            "method": "POST", "url": "{{base_url}}/tasks/submit",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "{\n  \"task_name\": \"facturation.rappel.paiement\",\n  \"payload\": {\n    \"client_id\": \"CLI-0042\",\n    \"facture_id\": \"FAC-2026-0099\",\n    \"montant_du_fcfa\": 75000,\n    \"canal\": \"sms\"\n  },\n  \"handler_url\": \"http://billing-service/api/reminders/send\",\n  \"app_source\": \"billing-app\",\n  \"countdown\": 3600,\n  \"priority\": 6\n}" },
+            "description": "Exécuté 1h après soumission (countdown: 3600s)."
+          }
+        }
+      ]
+    },
+    {
+      "name": "Suivi & Contrôle",
+      "item": [
+        {
+          "name": "Statut d'une tâche",
+          "request": { "method": "GET", "url": "{{base_url}}/tasks/{{task_id}}" }
+        },
+        {
+          "name": "Historique — toutes les tâches",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/tasks/?limit=50", "host": ["{{base_url}}"], "path": ["tasks",""], "query": [{"key":"limit","value":"50"}] }
+          }
+        },
+        {
+          "name": "Historique — filtrer par app_source",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/tasks/?app_source=geo-tracker-app&limit=50", "host": ["{{base_url}}"], "path": ["tasks",""], "query": [{"key":"app_source","value":"geo-tracker-app"},{"key":"limit","value":"50"}] }
+          }
+        },
+        {
+          "name": "Historique — filtrer par task_name",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/tasks/?task_name=geo.position&limit=50", "host": ["{{base_url}}"], "path": ["tasks",""], "query": [{"key":"task_name","value":"geo.position"},{"key":"limit","value":"50"}] }
+          }
+        },
+        {
+          "name": "Historique — callbacks échoués",
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{base_url}}/tasks/?callback_status=FAILED&limit=50", "host": ["{{base_url}}"], "path": ["tasks",""], "query": [{"key":"callback_status","value":"FAILED"},{"key":"limit","value":"50"}] }
+          }
+        },
+        {
+          "name": "Renvoyer le callback (resend)",
+          "request": {
+            "method": "POST",
+            "url": "{{base_url}}/tasks/{{task_id}}/resend",
+            "description": "Retente le POST vers callback_url pour une tâche SUCCESS."
+          }
+        },
+        {
+          "name": "Annuler une tâche",
+          "request": {
+            "method": "DELETE",
+            "url": { "raw": "{{base_url}}/tasks/{{task_id}}?terminate=false", "host": ["{{base_url}}"], "path": ["tasks","{{task_id}}"], "query": [{"key":"terminate","value":"false"}] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Queues & Workers",
+      "item": [
+        { "name": "Liste des queues",  "request": { "method": "GET", "url": "{{base_url}}/queues/" } },
+        { "name": "Ping workers",      "request": { "method": "GET", "url": "{{base_url}}/queues/workers/ping" } },
+        { "name": "Stats workers",     "request": { "method": "GET", "url": "{{base_url}}/queues/workers" } }
+      ]
+    }
+  ]
+}
