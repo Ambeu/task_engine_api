@@ -1,0 +1,31 @@
+[Unit]
+Description=Task Engine Celery Worker
+After=network.target redis.service
+Wants=redis.service
+
+[Service]
+User=taskengine
+Group=taskengine
+WorkingDirectory=/opt/task_engine
+EnvironmentFile=/etc/task_engine.env
+
+ExecStart=/opt/task_engine/.venv/bin/celery \
+    -A celery_app worker \
+    --loglevel=info \
+    --concurrency=4 \
+    --logfile=/var/log/task_engine/worker.log \
+    --pidfile=/var/run/task_engine/worker.pid
+
+ExecStop=/opt/task_engine/.venv/bin/celery \
+    -A celery_app control shutdown
+
+ExecReload=/opt/task_engine/.venv/bin/celery \
+    -A celery_app control pool_restart
+
+Restart=always
+RestartSec=10
+KillMode=mixed
+TimeoutStopSec=60
+
+[Install]
+WantedBy=multi-user.target
